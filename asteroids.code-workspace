@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"path": "..\\.."
+		}
+	],
+	"settings": {
+		"workbench.settings.useSplitJSON": true,
+		"editor.fontSize": 20
+	}
+}
