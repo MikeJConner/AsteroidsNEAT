@@ -12,6 +12,12 @@ pygame.font.init()
 #if anything goes off screen they should loop back around
     #this may be hard so maybe just kill anything off screen
 
+#load in images
+SHIP_IMG = pygame.transform.scale2x(pygame.image.load(os.path.join("images", "ship.png")))
+THRUST_IMG = pygame.transform.scale2x(pygame.image.load(os.path.join("images", "thrust.png")))
+ASTEROID_IMGS = [pygame.transform.scale2x(pygame.image.load(os.path.join("images", "asteroid0.png"))), pygame.transform.scale2x(pygame.image.load(os.path.join("images", "asteroid1.png"))), pygame.transform.scale2x(pygame.image.load(os.path.join("images", "asteroid2.png")))]
+
+#set our screen size and font
 WIN_WIDTH = 800
 WIN_HEIGHT = 800
 STAT_FONT = pygame.font.SysFont("comicsans", 50)
@@ -19,7 +25,18 @@ STAT_FONT = pygame.font.SysFont("comicsans", 50)
 gen = 0
 
 class SpaceShip:
-    pass
+    #rotation velocity, how fast the ship rotates per frame
+    ROT_VEL = 20
+
+    def __init__(self):
+        self.x = WIN_WIDTH // 2
+        self.y = WIN_HEIGHT // 2
+        self.rotation = 0
+        self.tick_count = 0
+        self.vel = 0
+
+    def thrust(self):
+        pass
 
 class Bullet:
     pass
