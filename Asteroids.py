@@ -14,7 +14,7 @@ pygame.font.init()
     #this may be hard so maybe just kill anything off screen
 
 #load in images
-SHIP_IMG = pygame.transform.scale2x(pygame.image.load(os.path.join("images", "ship.png")))
+SHIP_IMG = pygame.image.load(os.path.join("images", "ship.png"))
 THRUST_IMG = pygame.transform.scale2x(pygame.image.load(os.path.join("images", "thrust.png")))
 ASTEROID_IMGS = [pygame.transform.scale2x(pygame.image.load(os.path.join("images", "asteroid0.png"))), pygame.transform.scale2x(pygame.image.load(os.path.join("images", "asteroid1.png"))), pygame.transform.scale2x(pygame.image.load(os.path.join("images", "asteroid2.png")))]
 
@@ -66,11 +66,11 @@ class Ship:
         elif self.y < 0:
             self.y = WIN_HEIGHT
 
-    def shoot():
+    def shoot(self):
         return Bullet(self.x, self.y, self.rotation)
 
     def draw(self, win):
-        rotated_img = pygame.transform.rotate(self.img, self.rotation)
+        rotated_image = pygame.transform.rotate(self.img, self.rotation)
         new_rect = rotated_image.get_rect(center=self.img.get_rect(topleft = (self.x, self.y)).center)
         if self.isThrust:
             self.isThrust = False
@@ -90,7 +90,28 @@ class Bullet:
         pass
 
 class Asteroid:
-    pass
+
+    def __init__(self):
+        self.img = ASTEROID_IMGS[0]
+        self.x = 20
+        self.y = 20
+        self.rotation = 0
+
+    def move(self):
+        pass
+
+    def get_distance(self, ship_x, ship_y):
+        xdif = (self.x - ship_x)**2
+        ydif = (self.y - ship_y)**2
+        return math.sqrt(xdif + ydif)
+
+    def get_angle(self, ship_x, ship_y):
+        return math.atan2(ship_y - self.y, ship_x - self.x)
+
+    def draw(self, win):
+        rotated_image = pygame.transform.rotate(self.img, self.rotation)
+        new_rect = rotated_image.get_rect(center=self.img.get_rect(topleft = (self.x, self.y)).center)
+        win.blit(rotated_image, new_rect.topleft)
 
 class Game:
 
@@ -98,15 +119,32 @@ class Game:
         self.ship = Ship()
         self.asteroids = []
         self.closest_asteroids = []
+        self.bullets = []
         self.score = 0
         for i in range(10):
-            asteroids.append(Asteroid())
+            self.asteroids.append(Asteroid())
 
-    def get_closest_asteroids(self):
-        for asteroid in asteroids:
+    def move(self):
+        self.ship.move()
+
+    def get_closest_asteroids(self, ship_x, ship_y):
+        closest = []
+        for x, asteroid in enumerate(self.asteroids):
+            closer = True
+            if x > 7:
+                for location in closest:
+                    if float(location[0]) > float(asteroid.get_distance(ship_x, ship_y)):
+                        closest.pop(location)
+                        closer = True
+                        break
+            if closer:
+                closest.append((asteroid.get_distance(ship_x, ship_y), asteroid.get_angle(ship_x, ship_y)))
+        return closest
+            
 
 
-def draw_window(ships, bullets, asteroids, score, gen):
+def draw_window(win, ship, bullets, asteroids, score, gen):
+    win.fill((0,0,0))
     for asteroid in asteroids:
         asteroid.draw(win)
     text = STAT_FONT.render("Score: " + str(score), 1, (255,255,255))
@@ -122,6 +160,7 @@ def main(genomes, config):
     nets = []
     ge = []
     ships = []
+    games = []
     
     win = pygame.display.set_mode((WIN_WIDTH, WIN_HEIGHT))
     clock = pygame.time.Clock()
@@ -130,6 +169,7 @@ def main(genomes, config):
         net = neat.nn.FeedForwardNetwork.create(g, config)
         nets.append(net)
         ships.append(Ship())
+        games.append(Game())
         g.fitness = 0
         ge.append(g)
 
@@ -141,10 +181,12 @@ def main(genomes, config):
                 run = False
                 pygame.quit()
                 quit()
-        for x, ship in enumerate(ships):
-            ship.move()
+        for x, game in enumerate(games):
+            ship = game.ship
+            game.move()
             ge[x].fitness += 0.1
-            outputs = nets[x].activate((ship.x, ship.y, ship.rotation, ship.speed)) #distance to asteroids around the ships))
+            roids = game.get_closest_asteroids(game.ship.x, game.ship.y)
+            outputs = nets[x].activate((game.ship.x, game.ship.y, game.ship.rotation, game.ship.speed, roids[0][0], roids[0][1], roids[1][0], roids[1][1], roids[2][0], roids[2][1], roids[3][0], roids[3][1], roids[4][0], roids[4][1], roids[5][0], roids[5][1], roids[6][0], roids[6][1], roids[7][0], roids[7][1],)) #distance to asteroids around the ships))
             if outputs[0] > .5:
                 ship.rotate_left()
             if outputs[1] > .5:
@@ -153,6 +195,12 @@ def main(genomes, config):
                 ship.thrust()
             if outputs[3] > .5:
                 ship.shoot()
+        print(len(games))
+        s = getattr(games[0], 'ship')
+        b = games[0].bullets
+        a = games[0].asteroids
+        sc = int(games[0].score)
+        draw_window(win, s, b, a, s, gen)
 
 def run(config_path):
     config = neat.config.Config(neat.DefaultGenome, neat.DefaultReproduction, neat.DefaultSpeciesSet, neat.DefaultStagnation, config_path)
