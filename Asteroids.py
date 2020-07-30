@@ -35,7 +35,6 @@ class Ship:
         self.img = SHIP_IMG
         self.thrust_img = THRUST_IMG
         self.rotation = 0
-        #self.tick_count = 0
         self.speed = 0
         self.horizontal_speed = 0
         self.vertical_speed = 0
@@ -43,16 +42,16 @@ class Ship:
         self.isThrust = False
 
     def thrust(self):
-        if self.speed < self.MAX_SPEED:
-            self.horizontal_speed += math.cos(self.rotation * math.pi / 180)
-            self.vertical_speed += math.sin(self.rotation * math.pi / 180)
+        self.horizontal_speed -= math.sin(self.rotation * math.pi / 180)
+        self.vertical_speed -= math.cos(self.rotation * math.pi / 180)
+        self.speed = math.sqrt(self.horizontal_speed**2 + self.vertical_speed**2)
         self.isThrust = True
 
     def rotate_left(self):
-        self.rotation -= 1
+        self.rotation += 8
         
     def rotate_right(self):
-        self.rotation += 1
+        self.rotation -= 8
 
     def move(self):
         self.x += self.horizontal_speed
@@ -177,6 +176,14 @@ def main(genomes, config):
     run = True
     while run:
         clock.tick(30)
+        pressed = pygame.key.get_pressed()
+        if pressed[pygame.K_w]:
+            games[0].ship.thrust()
+        if pressed[pygame.K_a]:
+            games[0].ship.rotate_left()
+        if pressed[pygame.K_d]:
+            games[0].ship.rotate_right()
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
