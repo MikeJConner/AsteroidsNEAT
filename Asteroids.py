@@ -14,9 +14,9 @@ pygame.font.init()
     #this may be hard so maybe just kill anything off screen
 
 #load in images
-SHIP_IMG = pygame.image.load(os.path.join("images", "ship.png"))
-THRUST_IMG = pygame.transform.scale2x(pygame.image.load(os.path.join("images", "thrust.png")))
-ASTEROID_IMGS = [pygame.transform.scale2x(pygame.image.load(os.path.join("images", "asteroid0.png"))), pygame.transform.scale2x(pygame.image.load(os.path.join("images", "asteroid1.png"))), pygame.transform.scale2x(pygame.image.load(os.path.join("images", "asteroid2.png")))]
+SHIP_IMG = pygame.transform.scale(pygame.image.load(os.path.join("images", "ship.png")), (150,150))
+THRUST_IMG = pygame.transform.scale(pygame.image.load(os.path.join("images", "thrust.png")), (150,150))
+ASTEROID_IMGS = [pygame.transform.scale(pygame.image.load(os.path.join("images", "asteroid0.png")), (150,150)), pygame.transform.scale(pygame.image.load(os.path.join("images", "asteroid1.png")), (150,150)), pygame.transform.scale(pygame.image.load(os.path.join("images", "asteroid2.png")), (150,150))]
 
 #set our screen size and font
 WIN_WIDTH = 800
@@ -33,6 +33,7 @@ class Ship:
         self.x = WIN_WIDTH // 2
         self.y = WIN_HEIGHT // 2
         self.img = SHIP_IMG
+        self.thrust_img = THRUST_IMG
         self.rotation = 0
         #self.tick_count = 0
         self.speed = 0
@@ -71,13 +72,13 @@ class Ship:
 
     def draw(self, win):
         rotated_image = pygame.transform.rotate(self.img, self.rotation)
+        #rotated_thrust_img = pygame.transform.rotate(self.thrust_img, self.rotation)
         new_rect = rotated_image.get_rect(center=self.img.get_rect(topleft = (self.x, self.y)).center)
+        win.blit(rotated_image, new_rect.topleft)
         if self.isThrust:
             self.isThrust = False
-            rotated_thrust_img = pygame.transform.rotate(self.img, self.rotation)
+            rotated_thrust_img = pygame.transform.rotate(self.thrust_img, self.rotation)
             win.blit(rotated_thrust_img, new_rect.topleft)
-        else:
-            win.blit(rotated_image, new_rect.topleft)
         
     #this will get all of the pixels that the ship is taking up, this will allow us to see if a ship pixel collides with an asteroid pixel 
     def get_mask(self):
@@ -195,12 +196,11 @@ def main(genomes, config):
                 ship.thrust()
             if outputs[3] > .5:
                 ship.shoot()
-        print(len(games))
         s = getattr(games[0], 'ship')
         b = games[0].bullets
         a = games[0].asteroids
-        sc = int(games[0].score)
-        draw_window(win, s, b, a, s, gen)
+        sc = games[0].score
+        draw_window(win, s, b, a, sc, gen)
 
 def run(config_path):
     config = neat.config.Config(neat.DefaultGenome, neat.DefaultReproduction, neat.DefaultSpeciesSet, neat.DefaultStagnation, config_path)
