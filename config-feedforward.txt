@@ -2,7 +2,7 @@
 #do we want the fitness to be a higher or lower number? so for the flappy bird example the bird who goes the farthest gets the highest fitness score and we want whoever gets the most fitness (the bird that went farthest) to go on to make more generations
 fitness_criterion     = max
 #when the computed fitness passes this value then we can stop evoloution and say that we reached our maximum potnetial
-fitness_threshold     = 100
+fitness_threshold     = 1000
 #how many birds we will have per generation
 pop_size              = 80
 #different birds will make different neural connections, groups with different connections are species, if one dies we can say to reset it but in this and most cases we just want it to be false
