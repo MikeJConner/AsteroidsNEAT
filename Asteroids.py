@@ -28,6 +28,7 @@ class Ship:
     def __init__(self):
         self.x = WIN_WIDTH // 2
         self.y = WIN_HEIGHT // 2
+        self.MAX_SPEED = 10
         self.size = 20
         self.rotation = 0
         self.speed = 0
@@ -36,8 +37,12 @@ class Ship:
         self.isThrust = False
 
     def thrust(self):
-        self.horizontal_speed += math.cos(self.rotation * D_TO_R)
-        self.vertical_speed += math.sin(self.rotation * D_TO_R)
+        self.horizontal_speed += math.cos(self.rotation * D_TO_R) / 2
+        self.vertical_speed += math.sin(self.rotation * D_TO_R) / 2
+        if self.horizontal_speed > self.MAX_SPEED:
+            self.horizontal_speed = self.MAX_SPEED
+        if self.vertical_speed > self.MAX_SPEED:
+            self.vertical_speed = self.MAX_SPEED
         self.speed = math.sqrt(self.horizontal_speed**2 + self.vertical_speed**2)
         self.isThrust = True
 
@@ -94,6 +99,7 @@ class Bullet:
         self.y += self.VEL * math.sin(self.direction * D_TO_R)
         if self.x > WIN_WIDTH or self.x < 0 or self.y > WIN_HEIGHT or self.y < 0:
             self.on_screen = False
+        return not self.on_screen
 
     def draw(self, win):
         pygame.draw.circle(win, (255,255,255), (int(self.x), int(self.y)), 2)
@@ -103,21 +109,21 @@ class Asteroid:
 
     def __init__(self, x = -1, y = -1, size = -1, direction = -1):
         if size == -1:
-            size = random.randrange(0,3)
+            size = random.randrange(1,3)
             if size == 2:
-                self.size = 60
+                self.size = 80
             elif size == 1:
-                self.size = 30
+                self.size = 40
             elif size == 0:
-                self.size = 15
+                self.size = 20
         else:
             self.size = size
         if x == -1:
-            self.x = random.randrange(-1, WIN_WIDTH +1)
+            self.x = 0
         else:
             self.x = x
         if y == -1:
-            self.y = random.randrange(-1, WIN_HEIGHT + 1)
+            self.y = random.randrange(0, WIN_HEIGHT)
         else:
             self.y = y
         if direction == -1:
@@ -137,16 +143,16 @@ class Asteroid:
             full_circle += random.uniform(18, 36)
 
     def move(self):
-        self.x += self.speed / 2 * math.cos(self.direction)
-        self.y += self.speed / 2 * math.sin(self.direction)
-        if self.x > WIN_WIDTH:
-            self.x = 0
-        elif self.x < 0:
-            self.x = WIN_WIDTH
-        if self.y > WIN_HEIGHT:
-            self.y = 0
-        elif self.y < 0:
-            self.y = WIN_HEIGHT
+        self.x += self.speed / 1.5 * math.cos(self.direction)
+        self.y += self.speed / 1.5 * math.sin(self.direction)
+        if self.x > WIN_WIDTH + self.size / 2:
+            self.x = -self.size / 2
+        elif self.x < -self.size / 2:
+            self.x = WIN_WIDTH + self.size / 2
+        if self.y > WIN_HEIGHT + self.size / 2:
+            self.y = -self.size / 2
+        elif self.y < -self.size / 2:
+            self.y = WIN_HEIGHT + self.size / 2
 
     def rotate(self):
         self.rotation += 2
@@ -181,20 +187,27 @@ class Game:
         self.score = 0
         self.shoot_cooldown = 0
         self.win = win
+        self.hit_asteroid = False
+        self.bullet_missed = False
+        self.num_bullets_missed = 0
         for i in range(10):
             self.asteroids.append(Asteroid())
-        self.asteroids.append(Asteroid(WIN_WIDTH / 2, WIN_HEIGHT / 4, 30, 90))
+        self.asteroids.append(Asteroid(WIN_WIDTH / 2, WIN_HEIGHT / 4, 40, 90))
 
     def move(self):
         self.ship.move()
-        self.check_collisions(self.win)
         self.shoot_cooldown -= 1
+        self.hit_asteroid = self.check_collisions(self.win)
+        self.num_bullets_missed = 0
         if len(self.asteroids) < 10:
             self.asteroids.append(Asteroid())
         for asteroid in self.asteroids:
             asteroid.move()
         for bullet in self.bullets:
-            bullet.move()
+            self.bullet_missed = bullet.move()
+            if self.bullet_missed:
+                self.bullets.remove(bullet)
+                self.num_bullets_missed += 1
 
     def shoot(self):
         if self.shoot_cooldown <= 0:
@@ -224,13 +237,14 @@ class Game:
         for b in self.bullets:
             for a in self.asteroids:
                 if self.is_colliding(b.x, b.y, a.x, a.y, a.size):
-                    if a.size != 15:
+                    if a.size != 20:
                         self.asteroids.append(Asteroid(a.x, a.y, a.size / 2))
                         self.asteroids.append(Asteroid(a.x, a.y, a.size / 2))
                     self.asteroids.remove(a)
                     self.bullets.remove(b)
-                    self.score += 10
-                    break
+                    self.score += 1
+                    return True
+        return False
 
             
 def draw_window(win, ship, bullets, asteroids, score, gen):
@@ -292,7 +306,6 @@ def main(genomes, config):
 
         for x, game in enumerate(games):
             ship = game.ship
-            score = 0
             game.move()
 
             if x == 0:
@@ -304,18 +317,24 @@ def main(genomes, config):
 
             roids = game.get_closest_asteroids(game.ship.x, game.ship.y)
             outputs = nets[x].activate((game.ship.x, game.ship.y, game.ship.rotation, game.ship.speed, roids[0][0], roids[0][1], roids[1][0], roids[1][1], roids[2][0], roids[2][1], roids[3][0], roids[3][1], roids[4][0], roids[4][1], roids[5][0], roids[5][1], roids[6][0], roids[6][1], roids[7][0], roids[7][1]))
-            if outputs[0] > 0.5:
+            if outputs[0] > 0.75:
                 ship.rotate_left()
-            if outputs[1] > 0.5:
+            if outputs[1] > 0.75:
                 ship.rotate_right()
             if outputs[2] > 0.5:
                 ship.thrust()
-            if outputs[3] > 0.5:
+            if outputs[3] > 0.75:
                 game.shoot()
 
-            if game.score != score:
-                score = game.score
-                ge[x].fitness += 10
+            if game.hit_asteroid:
+                '''if x == 0:
+                    print("hit asteroid, fitness +1")'''
+                ge[x].fitness += 1
+            ge[x].fitness -= game.num_bullets_missed * .5
+            '''if game.bullet_missed and x == 0:
+                print(game.num_bullets_missed, " bullets missed, fitness -", game.num_bullets_missed * .5)'''
+            if ship.speed == 0:
+                ge[x].fitness -= .05
             ge[x].fitness += 0.1
             for a in game.asteroids:
                 if game.is_colliding(ship.x, ship.y, a.x, a.y, a.size):
