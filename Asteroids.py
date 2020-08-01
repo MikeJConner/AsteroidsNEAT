@@ -170,12 +170,12 @@ class Asteroid:
         self.lines = []
 
         # Make random asteroid sprites
-        full_circle = random.uniform(3, 5)
+        full_circle = random.uniform(50,72)
         self.vertices = []
         while full_circle < 360:
             self.vertices.append([self.size, full_circle])
-            dist = random.uniform(self.size * .6 , self.size * .8)
-            full_circle += random.uniform(60, 80)
+            dist = self.size * 0.75
+            full_circle += random.uniform(65, 75)
 
         for v in range(len(self.vertices)):
             if v == len(self.vertices) - 1:
@@ -190,6 +190,7 @@ class Asteroid:
     def move(self):
         self.x += self.speed / 1.5 * math.cos(self.direction)
         self.y += self.speed / 1.5 * math.sin(self.direction)
+        self.rotate()
         if self.x > WIN_WIDTH + self.size / 2:
             self.x = -self.size / 2
         elif self.x < -self.size / 2:
@@ -209,8 +210,15 @@ class Asteroid:
             else:
                 next_v = self.vertices[v + 1]
             this_v = self.vertices[v]
-            line = ((int(self.x + this_v[0] * math.cos(this_v[1] * D_TO_R)), int(self.y + this_v[0] * math.sin(this_v[1] * D_TO_R))),
-            (int(self.x + next_v[0] * math.cos(next_v[1] * D_TO_R)), int(self.y + next_v[0] * math.sin(next_v[1] * D_TO_R))))
+            x1 = (self.x + this_v[0] * math.cos(this_v[1] * D_TO_R)) - self.x
+            y1 = (self.y + this_v[0] * math.sin(this_v[1] * D_TO_R)) - self.y
+            x2 = (self.x + next_v[0] * math.cos(next_v[1] * D_TO_R)) - self.x
+            y2 = (self.y + next_v[0] * math.sin(next_v[1] * D_TO_R)) - self.y
+            x11 = (x1 * math.cos(self.rotation * D_TO_R) - y1 * math.sin(self.rotation * D_TO_R)) + self.x
+            y11 = (y1 * math.cos(self.rotation * D_TO_R) + x1 * math.sin(self.rotation * D_TO_R)) + self.y
+            x22 = (x2 * math.cos(self.rotation * D_TO_R) - y2 * math.sin(self.rotation * D_TO_R)) + self.x
+            y22 = (y2 * math.cos(self.rotation * D_TO_R) + x2 * math.sin(self.rotation * D_TO_R)) + self.y
+            line = ((int(x11), int(y11)), (int(x22), int(y22)))
             self.lines[v] = line
             pygame.draw.line(win, (255,255,255), line[0], line[1])
 
@@ -228,7 +236,7 @@ class Game:
         self.hit_asteroid = False
         self.bullet_missed = False
         self.num_bullets_missed = 0
-        for i in range(10):
+        for i in range(5):
             self.asteroids.append(Asteroid())
         self.asteroids.append(Asteroid(WIN_WIDTH / 2, WIN_HEIGHT / 4, 40, 90))
 
@@ -249,7 +257,7 @@ class Game:
         self.shoot_cooldown -= 1
         self.hit_asteroid = self.check_collisions(self.win)
         self.bullet_missed = False
-        if len(self.asteroids) < 10:
+        if len(self.asteroids) < 5:
             self.asteroids.append(Asteroid())
         for asteroid in self.asteroids:
             asteroid.move()
@@ -380,13 +388,13 @@ def main(genomes, config):
                 ship.rotate_right()
             if outputs[2] > 0.5:
                 ship.thrust()
-            if outputs[3] > 0.75:
+            if outputs[3] > 0.5:
                 game.shoot()
 
             if game.hit_asteroid:
-                ge[x].fitness += 1
+                ge[x].fitness += 10
             if game.bullet_missed:
-                ge[x].fitness -= 2
+                ge[x].fitness -= 1
             if ship.speed == 0:
                 ge[x].fitness -= .01
             ge[x].fitness += 0.01
