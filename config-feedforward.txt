@@ -15,7 +15,7 @@ reset_on_extinction   = False
 activation_default      = tanh
 #the probability that a mutation will replace our activation function with a randomly determined one from the activation_options below
 activation_mutate_rate  = 0.5
-activation_options      = sigmoid clamped cube
+activation_options      = sigmoid clamped 
 
 # node aggregation options
 aggregation_default     = sum

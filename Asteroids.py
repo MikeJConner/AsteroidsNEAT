@@ -18,7 +18,9 @@ WIN_WIDTH = 800
 WIN_HEIGHT = 800
 STAT_FONT = pygame.font.SysFont("comicsans", 50)
 #set game speed, making this number higher will let generations go faster
-GAME_SPEED = 1
+GAME_SPEED = 2
+#constant to convert degrees to radians
+D_TO_R = math.pi / 180
 #theres a better way to track gens globally
 gen = 0
 
@@ -34,8 +36,8 @@ class Ship:
         self.isThrust = False
 
     def thrust(self):
-        self.horizontal_speed += math.cos(self.rotation * math.pi / 180)
-        self.vertical_speed += math.sin(self.rotation * math.pi / 180)
+        self.horizontal_speed += math.cos(self.rotation * D_TO_R)
+        self.vertical_speed += math.sin(self.rotation * D_TO_R)
         self.speed = math.sqrt(self.horizontal_speed**2 + self.vertical_speed**2)
         self.isThrust = True
 
@@ -88,8 +90,8 @@ class Bullet:
         self.on_screen = True
 
     def move(self):
-        self.x += self.VEL * math.cos(self.direction * math.pi / 180)
-        self.y += self.VEL * math.sin(self.direction * math.pi / 180)
+        self.x += self.VEL * math.cos(self.direction * D_TO_R)
+        self.y += self.VEL * math.sin(self.direction * D_TO_R)
         if self.x > WIN_WIDTH or self.x < 0 or self.y > WIN_HEIGHT or self.y < 0:
             self.on_screen = False
 
@@ -119,9 +121,9 @@ class Asteroid:
         else:
             self.y = y
         if direction == -1:
-            self.direction = random.randrange(0, 360) * math.pi / 180
+            self.direction = random.randrange(0, 360) * D_TO_R
         else:
-            self.direction = direction * math.pi / 180
+            self.direction = direction * D_TO_R
         self.speed = random.randrange(1, 5)
         self.rotation = 0
 
@@ -155,7 +157,7 @@ class Asteroid:
         return math.sqrt(xdif + ydif)
 
     def get_angle(self, ship_x, ship_y):
-        return math.atan2(ship_y - self.y, ship_x - self.x) * math.pi / 180
+        return math.atan2(ship_y - self.y, ship_x - self.x) * D_TO_R
 
     def draw(self, win):
         for v in range(len(self.vertices)):
@@ -165,8 +167,8 @@ class Asteroid:
                 next_v = self.vertices[v + 1]
             this_v = self.vertices[v]
             pygame.draw.line(win, (255,255,255), 
-            (int(self.x + this_v[0] * math.cos(this_v[1] * math.pi / 180)), int(self.y + this_v[0] * math.sin(this_v[1] * math.pi / 180))),
-            (int(self.x + next_v[0] * math.cos(next_v[1] * math.pi / 180)), int(self.y + next_v[0] * math.sin(next_v[1] * math.pi / 180))))
+            (int(self.x + this_v[0] * math.cos(this_v[1] * D_TO_R)), int(self.y + this_v[0] * math.sin(this_v[1] * D_TO_R))),
+            (int(self.x + next_v[0] * math.cos(next_v[1] * D_TO_R)), int(self.y + next_v[0] * math.sin(next_v[1] * D_TO_R))))
 
 
 class Game:
@@ -321,6 +323,7 @@ def main(genomes, config):
                     games.pop(x)
                     nets.pop(x)
                     ge.pop(x)
+                    break
             
         
         
