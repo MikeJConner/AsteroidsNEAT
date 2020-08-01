@@ -13,14 +13,12 @@ pygame.font.init()
 #if anything goes off screen they should loop back around
     #this may be hard so maybe just kill anything off screen
 
-#load in images
-THRUST_IMG = pygame.transform.scale(pygame.image.load(os.path.join("images", "thrust_.png")), (30,30))
-ASTEROID_IMGS = [pygame.transform.scale(pygame.image.load(os.path.join("images", "asteroid0_.png")), (150,150)), pygame.transform.scale(pygame.image.load(os.path.join("images", "asteroid1_.png")), (150,150)), pygame.transform.scale(pygame.image.load(os.path.join("images", "asteroid2_.png")), (150,150))]
-
 #set our screen size and font
 WIN_WIDTH = 800
 WIN_HEIGHT = 800
 STAT_FONT = pygame.font.SysFont("comicsans", 50)
+#set game speed, making this number higher will let generations go faster
+GAME_SPEED = 1
 #theres a better way to track gens globally
 gen = 0
 
@@ -29,12 +27,10 @@ class Ship:
         self.x = WIN_WIDTH // 2
         self.y = WIN_HEIGHT // 2
         self.size = 20
-        self.thrust_img = THRUST_IMG
         self.rotation = 0
         self.speed = 0
         self.horizontal_speed = 0
         self.vertical_speed = 0
-        self.MAX_SPEED = 20
         self.isThrust = False
 
     def thrust(self):
@@ -103,7 +99,7 @@ class Bullet:
 
 class Asteroid:
 
-    def __init__(self, x = -1, y = -1, size = -1):
+    def __init__(self, x = -1, y = -1, size = -1, direction = -1):
         if size == -1:
             size = random.randrange(0,3)
             if size == 2:
@@ -122,8 +118,11 @@ class Asteroid:
             self.y = random.randrange(-1, WIN_HEIGHT + 1)
         else:
             self.y = y
+        if direction == -1:
+            self.direction = random.randrange(0, 360) * math.pi / 180
+        else:
+            self.direction = direction * math.pi / 180
         self.speed = random.randrange(1, 5)
-        self.direction = random.randrange(0, 360) * math.pi / 180
         self.rotation = 0
 
         # Make random asteroid sprites
@@ -156,7 +155,7 @@ class Asteroid:
         return math.sqrt(xdif + ydif)
 
     def get_angle(self, ship_x, ship_y):
-        return math.atan2(ship_y - self.y, ship_x - self.x)
+        return math.atan2(ship_y - self.y, ship_x - self.x) * math.pi / 180
 
     def draw(self, win):
         for v in range(len(self.vertices)):
@@ -178,19 +177,27 @@ class Game:
         self.closest_asteroids = []
         self.bullets = []
         self.score = 0
+        self.shoot_cooldown = 0
         self.win = win
         for i in range(10):
             self.asteroids.append(Asteroid())
+        self.asteroids.append(Asteroid(WIN_WIDTH / 2, WIN_HEIGHT / 4, 30, 90))
 
     def move(self):
         self.ship.move()
         self.check_collisions(self.win)
+        self.shoot_cooldown -= 1
         if len(self.asteroids) < 10:
             self.asteroids.append(Asteroid())
         for asteroid in self.asteroids:
             asteroid.move()
         for bullet in self.bullets:
             bullet.move()
+
+    def shoot(self):
+        if self.shoot_cooldown <= 0:
+            self.bullets.append(self.ship.shoot())
+            self.shoot_cooldown = 30
 
     def get_closest_asteroids(self, ship_x, ship_y):
         closest = []
@@ -212,8 +219,8 @@ class Game:
         return False
 
     def check_collisions(self, win):
-        for a in self.asteroids:
-            for b in self.bullets:
+        for b in self.bullets:
+            for a in self.asteroids:
                 if self.is_colliding(b.x, b.y, a.x, a.y, a.size):
                     if a.size != 15:
                         self.asteroids.append(Asteroid(a.x, a.y, a.size / 2))
@@ -221,6 +228,7 @@ class Game:
                     self.asteroids.remove(a)
                     self.bullets.remove(b)
                     self.score += 10
+                    break
 
             
 def draw_window(win, ship, bullets, asteroids, score, gen):
@@ -254,7 +262,7 @@ def main(genomes, config):
 
     run = True
     while run:
-        clock.tick(30)
+        clock.tick(30 * GAME_SPEED)
         #check for user input
         '''
         pressed = pygame.key.get_pressed()
@@ -273,7 +281,7 @@ def main(genomes, config):
             '''
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
-                    games[0].bullets.append(games[0].ship.shoot())
+                    games[0].shoot()
             '''
         
         if len(games) < 1:
@@ -293,7 +301,7 @@ def main(genomes, config):
                 draw_window(win, s, b, a, sc, gen)
 
             roids = game.get_closest_asteroids(game.ship.x, game.ship.y)
-            outputs = nets[x].activate((game.ship.x, game.ship.y, game.ship.rotation, game.ship.speed, roids[0][0], roids[0][1], roids[1][0], roids[1][1], roids[2][0], roids[2][1], roids[3][0], roids[3][1], roids[4][0], roids[4][1], roids[5][0], roids[5][1], roids[6][0], roids[6][1], roids[7][0], roids[7][1],))
+            outputs = nets[x].activate((game.ship.x, game.ship.y, game.ship.rotation, game.ship.speed, roids[0][0], roids[0][1], roids[1][0], roids[1][1], roids[2][0], roids[2][1], roids[3][0], roids[3][1], roids[4][0], roids[4][1], roids[5][0], roids[5][1], roids[6][0], roids[6][1], roids[7][0], roids[7][1]))
             if outputs[0] > 0.5:
                 ship.rotate_left()
             if outputs[1] > 0.5:
@@ -301,14 +309,15 @@ def main(genomes, config):
             if outputs[2] > 0.5:
                 ship.thrust()
             if outputs[3] > 0.5:
-                ship.shoot()
+                game.shoot()
 
             if game.score != score:
                 score = game.score
-                ge[x].fitness += 1
+                ge[x].fitness += 10
             ge[x].fitness += 0.1
             for a in game.asteroids:
                 if game.is_colliding(ship.x, ship.y, a.x, a.y, a.size):
+                    ge[x].fitness -= 10
                     games.pop(x)
                     nets.pop(x)
                     ge.pop(x)
@@ -321,7 +330,7 @@ def run(config_path):
     p.add_reporter(neat.StdOutReporter(True))
     stats = neat.StatisticsReporter()
     p.add_reporter(stats)
-    winner = p.run(main,50)
+    winner = p.run(main,500)
 
 if __name__ == "__main__":
     local_dir = os.path.dirname(__file__)
