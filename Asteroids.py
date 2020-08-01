@@ -18,11 +18,43 @@ WIN_WIDTH = 800
 WIN_HEIGHT = 800
 STAT_FONT = pygame.font.SysFont("comicsans", 50)
 #set game speed, making this number higher will let generations go faster
-GAME_SPEED = 2
+GAME_SPEED = 4
 #constant to convert degrees to radians
 D_TO_R = math.pi / 180
 #theres a better way to track gens globally
 gen = 0
+
+
+def get_slope(line):
+    xdif = line[1][1] - line[0][1]
+    ydif = line[1][0] - line[0][0]
+    if ydif == 0:
+        return 9999
+    return xdif / ydif
+
+def get_y_int(line, slope):
+    return line[0][1] - slope * line[0][0]
+
+def find_intersection(line1, line2):
+    m1 = get_slope(line1)
+    m2 = get_slope(line2)
+    b1 = get_y_int(line1, m1)
+    b2 = get_y_int(line2, m2)
+    if m1 == m2:
+        return False
+    x = (b2 - b1) / (m1-m2)
+    y = m1* x + b1
+    if x < line1[1][0] and x > line1[0][0] or x > line1[1][0] and x < line1[0][0]:
+        if y < line1[1][1] and y > line1[0][1] or y > line1[1][1] and y < line1[0][1]:
+            if x < line2[1][0] and x > line2[0][0] or x > line2[1][0] and x < line2[0][0]:
+                if y < line2[1][1] and y > line2[0][1] or y > line2[1][1] and y < line2[0][1]:
+                    return x, y
+    return False
+
+def get_dis(x1, x2, y1, y2):
+        xdif = (x1 - x2)**2
+        ydif = (y1 - y2)**2
+        return int(math.sqrt(xdif + ydif))
 
 class Ship:
     def __init__(self):
@@ -34,7 +66,7 @@ class Ship:
         self.speed = 0
         self.horizontal_speed = 0
         self.vertical_speed = 0
-        self.isThrust = False
+        self.is_thrust = False
 
     def thrust(self):
         self.horizontal_speed += math.cos(self.rotation * D_TO_R) / 2
@@ -44,7 +76,7 @@ class Ship:
         if self.vertical_speed > self.MAX_SPEED:
             self.vertical_speed = self.MAX_SPEED
         self.speed = math.sqrt(self.horizontal_speed**2 + self.vertical_speed**2)
-        self.isThrust = True
+        self.is_thrust = True
 
     def rotate_left(self):
         self.rotation -= 8
@@ -53,6 +85,10 @@ class Ship:
         self.rotation += 8
 
     def move(self):
+        if not self.is_thrust and self.horizontal_speed != 0:
+            self.horizontal_speed -= self.horizontal_speed * 0.02
+        if not self.is_thrust and self.vertical_speed != 0:
+            self.vertical_speed -= self.vertical_speed * 0.02
         self.x += self.horizontal_speed
         self.y += self.vertical_speed
         #check if we need to wrap around the screen
@@ -76,8 +112,8 @@ class Ship:
         coord2 = (int(self.x - v0 * math.cos(v1 - v2)), int(self.y + v0 * math.sin(v1 - v2)))
         coord3 = (int(self.x + self.size * math.cos(v2)), int(self.y + self.size * math.sin(v2)))
         pygame.draw.lines(win, (255,255,255), True, (coord1,coord2, coord3))
-        if self.isThrust:
-            self.isThrust = False
+        if self.is_thrust:
+            self.is_thrust = False
             coord1 = (int(self.x - (self.size+10) * math.cos(v2)), int(self.y - (self.size+10) * math.sin(v2)))
             coord2 = (int(self.x - ((self.size+10) * 0.5 * math.cos(v2 + math.pi / 6))), int(self.y - ((self.size+10) * 0.5 * math.sin(v2 + math.pi / 6))))
             pygame.draw.line(win, (255,255,255), coord1, coord2)
@@ -85,12 +121,12 @@ class Ship:
             coord2 = (int(self.x - ((self.size+10) * 0.5 * math.cos(-v2 + math.pi / 6))), int(self.y + ((self.size+10) * 0.5 * math.sin(-v2 + math.pi / 6))))
             pygame.draw.line(win, (255,255,255), coord1, coord2)
 
-class Bullet:
 
+class Bullet:
     def __init__(self, x, y, direction):
         self.x = x
         self.y = y
-        self.VEL = 20
+        self.VEL = 30
         self.direction = direction
         self.on_screen = True
 
@@ -106,7 +142,6 @@ class Bullet:
 
 
 class Asteroid:
-
     def __init__(self, x = -1, y = -1, size = -1, direction = -1):
         if size == -1:
             size = random.randrange(1,3)
@@ -132,15 +167,25 @@ class Asteroid:
             self.direction = direction * D_TO_R
         self.speed = random.randrange(1, 5)
         self.rotation = 0
+        self.lines = []
 
         # Make random asteroid sprites
-        full_circle = random.uniform(18, 36)
-        dist = random.uniform(self.size / 2, self.size)
+        full_circle = random.uniform(3, 5)
         self.vertices = []
         while full_circle < 360:
-            self.vertices.append([dist, full_circle])
-            dist = random.uniform(self.size / 2, self.size)
-            full_circle += random.uniform(18, 36)
+            self.vertices.append([self.size, full_circle])
+            dist = random.uniform(self.size * .6 , self.size * .8)
+            full_circle += random.uniform(60, 80)
+
+        for v in range(len(self.vertices)):
+            if v == len(self.vertices) - 1:
+                next_v = self.vertices[0]
+            else:
+                next_v = self.vertices[v + 1]
+            this_v = self.vertices[v]
+            line = ((int(self.x + this_v[0] * math.cos(this_v[1] * D_TO_R)), int(self.y + this_v[0] * math.sin(this_v[1] * D_TO_R))),
+            (int(self.x + next_v[0] * math.cos(next_v[1] * D_TO_R)), int(self.y + next_v[0] * math.sin(next_v[1] * D_TO_R))))
+            self.lines.append(line)
 
     def move(self):
         self.x += self.speed / 1.5 * math.cos(self.direction)
@@ -157,14 +202,6 @@ class Asteroid:
     def rotate(self):
         self.rotation += 2
 
-    def get_distance(self, ship_x, ship_y):
-        xdif = (self.x - ship_x)**2
-        ydif = (self.y - ship_y)**2
-        return math.sqrt(xdif + ydif)
-
-    def get_angle(self, ship_x, ship_y):
-        return math.atan2(ship_y - self.y, ship_x - self.x) * D_TO_R
-
     def draw(self, win):
         for v in range(len(self.vertices)):
             if v == len(self.vertices) - 1:
@@ -172,18 +209,19 @@ class Asteroid:
             else:
                 next_v = self.vertices[v + 1]
             this_v = self.vertices[v]
-            pygame.draw.line(win, (255,255,255), 
-            (int(self.x + this_v[0] * math.cos(this_v[1] * D_TO_R)), int(self.y + this_v[0] * math.sin(this_v[1] * D_TO_R))),
+            line = ((int(self.x + this_v[0] * math.cos(this_v[1] * D_TO_R)), int(self.y + this_v[0] * math.sin(this_v[1] * D_TO_R))),
             (int(self.x + next_v[0] * math.cos(next_v[1] * D_TO_R)), int(self.y + next_v[0] * math.sin(next_v[1] * D_TO_R))))
+            self.lines[v] = line
+            pygame.draw.line(win, (255,255,255), line[0], line[1])
 
 
 class Game:
-
     def __init__(self, win):
         self.ship = Ship()
         self.asteroids = []
-        self.closest_asteroids = []
         self.bullets = []
+        self.distances = []
+        self.sight_lines = []
         self.score = 0
         self.shoot_cooldown = 0
         self.win = win
@@ -196,9 +234,21 @@ class Game:
 
     def move(self):
         self.ship.move()
+        self.sight_lines = (
+            ((int(self.ship.x), int(self.ship.y)), (int(self.ship.x + math.cos(self.ship.rotation * D_TO_R) * WIN_WIDTH), int(self.ship.y + math.sin(self.ship.rotation * D_TO_R) * WIN_HEIGHT))),
+            ((int(self.ship.x), int(self.ship.y)), (int(self.ship.x + math.cos((self.ship.rotation + 45) * D_TO_R) * WIN_WIDTH), int(self.ship.y + math.sin((self.ship.rotation + 45) * D_TO_R) * WIN_HEIGHT))),
+            ((int(self.ship.x), int(self.ship.y)), (int(self.ship.x + math.cos((self.ship.rotation - 45) * D_TO_R) * WIN_WIDTH), int(self.ship.y + math.sin((self.ship.rotation - 45) * D_TO_R) * WIN_HEIGHT))),
+            ((int(self.ship.x), int(self.ship.y)), (int(self.ship.x + math.cos((self.ship.rotation + 90) * D_TO_R) * WIN_WIDTH), int(self.ship.y + math.sin((self.ship.rotation + 90) * D_TO_R) * WIN_HEIGHT))),
+            ((int(self.ship.x), int(self.ship.y)), (int(self.ship.x + math.cos((self.ship.rotation - 90) * D_TO_R) * WIN_WIDTH), int(self.ship.y + math.sin((self.ship.rotation - 90) * D_TO_R) * WIN_HEIGHT))),
+            ((int(self.ship.x), int(self.ship.y)), (int(self.ship.x + math.cos((self.ship.rotation + 135) * D_TO_R) * WIN_WIDTH), int(self.ship.y + math.sin((self.ship.rotation + 135) * D_TO_R) * WIN_HEIGHT))),
+            ((int(self.ship.x), int(self.ship.y)), (int(self.ship.x + math.cos((self.ship.rotation - 135) * D_TO_R) * WIN_WIDTH), int(self.ship.y + math.sin((self.ship.rotation - 135) * D_TO_R) * WIN_HEIGHT))),
+            ((int(self.ship.x), int(self.ship.y)), (int(self.ship.x + math.cos((self.ship.rotation + 180) * D_TO_R) * WIN_WIDTH), int(self.ship.y + math.sin((self.ship.rotation + 180) * D_TO_R) * WIN_HEIGHT))),
+            ((int(self.ship.x), int(self.ship.y)), (int(self.ship.x + math.cos((self.ship.rotation - 180) * D_TO_R) * WIN_WIDTH), int(self.ship.y + math.sin((self.ship.rotation - 180) * D_TO_R) * WIN_HEIGHT)))
+        )
+        self.distances = self.get_sight()
         self.shoot_cooldown -= 1
         self.hit_asteroid = self.check_collisions(self.win)
-        self.num_bullets_missed = 0
+        self.bullet_missed = False
         if len(self.asteroids) < 10:
             self.asteroids.append(Asteroid())
         for asteroid in self.asteroids:
@@ -207,26 +257,12 @@ class Game:
             self.bullet_missed = bullet.move()
             if self.bullet_missed:
                 self.bullets.remove(bullet)
-                self.num_bullets_missed += 1
+                break
 
     def shoot(self):
         if self.shoot_cooldown <= 0:
             self.bullets.append(self.ship.shoot())
             self.shoot_cooldown = 30
-
-    def get_closest_asteroids(self, ship_x, ship_y):
-        closest = []
-        for x, asteroid in enumerate(self.asteroids):
-            closer = True
-            if x > 7:
-                for location in closest:
-                    if float(location[0]) > float(asteroid.get_distance(ship_x, ship_y)):
-                        closest.pop(closest.index(location))
-                        closer = True
-                        break
-            if closer:
-                closest.append((asteroid.get_distance(ship_x, ship_y), asteroid.get_angle(ship_x, ship_y)))
-        return closest
 
     def is_colliding(self, x, y, xTo, yTo, size):
         if x > xTo - size and x < xTo + size and y > yTo - size and y < yTo + size:
@@ -238,15 +274,36 @@ class Game:
             for a in self.asteroids:
                 if self.is_colliding(b.x, b.y, a.x, a.y, a.size):
                     if a.size != 20:
-                        self.asteroids.append(Asteroid(a.x, a.y, a.size / 2))
-                        self.asteroids.append(Asteroid(a.x, a.y, a.size / 2))
+                        self.asteroids.append(Asteroid(a.x, a.y, a.size / 2, a.direction - random.randrange(5, 20)))
+                        self.asteroids.append(Asteroid(a.x, a.y, a.size / 2, a.direction + random.randrange(5, 200)))
                     self.asteroids.remove(a)
                     self.bullets.remove(b)
                     self.score += 1
                     return True
         return False
 
-            
+    def get_sight(self):
+        s_lines = self.sight_lines
+        a_lines = []
+        distances = []
+        for a in self.asteroids:
+            for line in a.lines:
+                a_lines.append(line)
+        for x, s in enumerate(s_lines):
+            closest = 10000
+            for a in a_lines:
+                coord = find_intersection(s, a)
+                if coord:
+                    dis = get_dis(self.ship.x, coord[0], self.ship.y, coord[1])
+                    if dis < closest:
+                        closest = dis
+            if closest != 10000:
+                distances.append(closest)
+            else:
+                distances.append(10000)
+        return distances            
+
+
 def draw_window(win, ship, bullets, asteroids, score, gen):
     win.fill((0,0,0))
     for asteroid in asteroids:
@@ -279,8 +336,16 @@ def main(genomes, config):
     run = True
     while run:
         clock.tick(30 * GAME_SPEED)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                run = False
+                pygame.quit()
+                quit()
         #check for user input
         '''
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    games[0].shoot()
         pressed = pygame.key.get_pressed()
         if pressed[pygame.K_w]:
             games[0].ship.thrust()
@@ -289,16 +354,6 @@ def main(genomes, config):
         if pressed[pygame.K_d]:
             games[0].ship.rotate_right()
         '''
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                run = False
-                pygame.quit()
-                quit()
-            '''
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
-                    games[0].shoot()
-            '''
         
         if len(games) < 1:
             run = False
@@ -309,14 +364,16 @@ def main(genomes, config):
             game.move()
 
             if x == 0:
-                s = getattr(games[0], 'ship')
-                b = games[0].bullets
-                a = games[0].asteroids
-                sc = games[0].score
+                s = getattr(game, 'ship')
+                b = game.bullets
+                a = game.asteroids
+                sc = game.score
                 draw_window(win, s, b, a, sc, gen)
+                #for x, distance in enumerate(game.distances):
+                    #if x == 5:
+                        #print(x, ": ", distance)
 
-            roids = game.get_closest_asteroids(game.ship.x, game.ship.y)
-            outputs = nets[x].activate((game.ship.x, game.ship.y, game.ship.rotation, game.ship.speed, roids[0][0], roids[0][1], roids[1][0], roids[1][1], roids[2][0], roids[2][1], roids[3][0], roids[3][1], roids[4][0], roids[4][1], roids[5][0], roids[5][1], roids[6][0], roids[6][1], roids[7][0], roids[7][1]))
+            outputs = nets[x].activate((game.ship.x, game.ship.y, game.ship.rotation, game.ship.speed, game.distances[0], game.distances[1], game.distances[2], game.distances[3], game.distances[4], game.distances[5], game.distances[6], game.distances[7]))
             if outputs[0] > 0.75:
                 ship.rotate_left()
             if outputs[1] > 0.75:
@@ -327,15 +384,12 @@ def main(genomes, config):
                 game.shoot()
 
             if game.hit_asteroid:
-                '''if x == 0:
-                    print("hit asteroid, fitness +1")'''
                 ge[x].fitness += 1
-            ge[x].fitness -= game.num_bullets_missed * .5
-            '''if game.bullet_missed and x == 0:
-                print(game.num_bullets_missed, " bullets missed, fitness -", game.num_bullets_missed * .5)'''
+            if game.bullet_missed:
+                ge[x].fitness -= 2
             if ship.speed == 0:
-                ge[x].fitness -= .05
-            ge[x].fitness += 0.1
+                ge[x].fitness -= .01
+            ge[x].fitness += 0.01
             for a in game.asteroids:
                 if game.is_colliding(ship.x, ship.y, a.x, a.y, a.size):
                     ge[x].fitness -= 10

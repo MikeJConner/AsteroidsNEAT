@@ -5,7 +5,7 @@ fitness_criterion     = max
 fitness_threshold     = 100000
 no_fitness_termination = True
 #how many birds we will have per generation
-pop_size              = 800
+pop_size              = 1000
 #different birds will make different neural connections, groups with different connections are species, if one dies we can say to reset it but in this and most cases we just want it to be false
 reset_on_extinction   = False
 
@@ -15,7 +15,7 @@ reset_on_extinction   = False
 activation_default      = tanh
 #the probability that a mutation will replace our activation function with a randomly determined one from the activation_options below
 activation_mutate_rate  = 0.5
-activation_options      = sigmoid clamped 
+activation_options      = sigmoid clamped relu softplus
 
 # node aggregation options
 aggregation_default     = sum
@@ -44,16 +44,16 @@ enabled_default         = True
 enabled_mutate_rate     = 0.01
 
 feed_forward            = True
-initial_connection      = full_direct
+initial_connection      = full_nodirect
 
 # node add/remove rates
 node_add_prob           = 0.2
 node_delete_prob        = 0.2
 
 # network parameters
-num_hidden              = 3
+num_hidden              = 1
 #we want this to be how many things we are giving our network, so for this we have the birds y position and how far vertically the bird is from the top and bottom pipes. This can be seen around line 220 in our python file
-num_inputs              = 20
+num_inputs              = 12
 #this is all the outputs we want. In this case we just want 1 and it will be used to determine if we should jump or not
 num_outputs             = 4
 
