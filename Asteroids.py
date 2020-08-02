@@ -4,6 +4,7 @@ import time
 import os
 import random
 import math
+import pickle
 pygame.font.init()
 
 #create a game of asteroids that learns using neat. 
@@ -18,7 +19,7 @@ WIN_WIDTH = 800
 WIN_HEIGHT = 800
 STAT_FONT = pygame.font.SysFont("comicsans", 50)
 #set game speed, making this number higher will let generations go faster
-GAME_SPEED = 4
+GAME_SPEED = 1
 #constant to convert degrees to radians
 D_TO_R = math.pi / 180
 #theres a better way to track gens globally
@@ -175,7 +176,7 @@ class Asteroid:
         while full_circle < 360:
             self.vertices.append([self.size, full_circle])
             dist = self.size * 0.75
-            full_circle += random.uniform(65, 75)
+            full_circle += random.uniform(45, 75)
 
         for v in range(len(self.vertices)):
             if v == len(self.vertices) - 1:
@@ -258,7 +259,10 @@ class Game:
         self.hit_asteroid = self.check_collisions(self.win)
         self.bullet_missed = False
         if len(self.asteroids) < 5:
-            self.asteroids.append(Asteroid())
+            if self.ship.x < 60 or WIN_WIDTH - self.ship.x  < 60:
+                self.asteroids.append(Asteroid(None, random.randint(int(self.ship.y) - 60, int(self.ship.y) + 60)))
+            else:
+                self.asteroids.append(Asteroid())
         for asteroid in self.asteroids:
             asteroid.move()
         for bullet in self.bullets:
@@ -297,9 +301,9 @@ class Game:
         for a in self.asteroids:
             for line in a.lines:
                 a_lines.append(line)
-        for x, s in enumerate(s_lines):
+        for a in a_lines:
             closest = 10000
-            for a in a_lines:
+            for s in s_lines:
                 coord = find_intersection(s, a)
                 if coord:
                     dis = get_dis(self.ship.x, coord[0], self.ship.y, coord[1])
@@ -325,12 +329,13 @@ def draw_window(win, ship, bullets, asteroids, score, gen):
     win.blit(text, (int(WIN_WIDTH / 2 - text.get_width() / 2), 100))
     pygame.display.update()
 
-def main(genomes, config):
+def neat_main(genomes, config):
     global gen
     gen += 1
     nets = []
     ge = []
     games = []
+    best_fitness = 0
     win = pygame.display.set_mode((WIN_WIDTH, WIN_HEIGHT))
     clock = pygame.time.Clock()
 
@@ -340,6 +345,7 @@ def main(genomes, config):
         games.append(Game(win))
         g.fitness = 0
         ge.append(g)
+    best_genome = ge[0]
 
     run = True
     while run:
@@ -381,11 +387,14 @@ def main(genomes, config):
                     #if x == 5:
                         #print(x, ": ", distance)
 
-            outputs = nets[x].activate((game.ship.x, game.ship.y, game.ship.rotation, game.ship.speed, game.distances[0], game.distances[1], game.distances[2], game.distances[3], game.distances[4], game.distances[5], game.distances[6], game.distances[7]))
+            #outputs = nets[x].activate((game.ship.x, game.ship.y, game.ship.rotation, game.ship.speed, game.distances[0], game.distances[1], game.distances[2], game.distances[3], game.distances[4], game.distances[5], game.distances[6], game.distances[7]))
+            outputs = nets[x].activate((game.distances[0], game.distances[1], game.distances[2], game.distances[3], game.distances[4], game.distances[5], game.distances[6], game.distances[7]))
             if outputs[0] > 0.75:
                 ship.rotate_left()
+                ge[x].fitness -= 0.01
             if outputs[1] > 0.75:
                 ship.rotate_right()
+                ge[x].fitness -= 0.01
             if outputs[2] > 0.5:
                 ship.thrust()
             if outputs[3] > 0.5:
@@ -396,27 +405,149 @@ def main(genomes, config):
             if game.bullet_missed:
                 ge[x].fitness -= 1
             if ship.speed == 0:
-                ge[x].fitness -= .01
-            ge[x].fitness += 0.01
+                ge[x].fitness -= 0.01
+           # ge[x].fitness += 0.01
             for a in game.asteroids:
                 if game.is_colliding(ship.x, ship.y, a.x, a.y, a.size):
                     ge[x].fitness -= 10
+                    if ge[x].fitness > best_fitness:
+                        best_fitness = ge[x].fitness
+                        best_genome = ge[x]
                     games.pop(x)
                     nets.pop(x)
                     ge.pop(x)
                     break
-            
+    #create or open a pickle file to write to named f and save our linear data in it
+    name = "pickles/best_genome_gen_" + str(gen) + ".p"
+    pickle.dump(best_genome, open(name, "wb"))
+
+def replay_main(genomes, config):
+    global gen
+    gen += 1
+    nets = []
+    ge = []
+    games = []
+    best_fitness = 0
+    win = pygame.display.set_mode((WIN_WIDTH, WIN_HEIGHT))
+    clock = pygame.time.Clock()
+
+    for _,g in genomes:
+        net = neat.nn.FeedForwardNetwork.create(g, config)
+        nets.append(net)
+        games.append(Game(win))
+        g.fitness = 0
+        ge.append(g)
+    best_genome = ge[0]
+
+    run = True
+    while run:
+        clock.tick(30 * GAME_SPEED)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                run = False
+                pygame.quit()
+                quit()
+        #check for user input
+        '''
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    games[0].shoot()
+        pressed = pygame.key.get_pressed()
+        if pressed[pygame.K_w]:
+            games[0].ship.thrust()
+        if pressed[pygame.K_a]:
+            games[0].ship.rotate_left()
+        if pressed[pygame.K_d]:
+            games[0].ship.rotate_right()
+        '''
         
-        
+        if len(games) < 1:
+            run = False
+            break
+
+        for x, game in enumerate(games):
+            ship = game.ship
+            game.move()
+
+            if x == 0:
+                s = getattr(game, 'ship')
+                b = game.bullets
+                a = game.asteroids
+                sc = game.score
+                draw_window(win, s, b, a, sc, gen)
+                #for x, distance in enumerate(game.distances):
+                    #if x == 5:
+                        #print(x, ": ", distance)
+
+            #outputs = nets[x].activate((game.ship.x, game.ship.y, game.ship.rotation, game.ship.speed, game.distances[0], game.distances[1], game.distances[2], game.distances[3], game.distances[4], game.distances[5], game.distances[6], game.distances[7]))
+            outputs = nets[x].activate((game.distances[0], game.distances[1], game.distances[2], game.distances[3], game.distances[4], game.distances[5], game.distances[6], game.distances[7]))
+            if outputs[0] > 0.75:
+                ship.rotate_left()
+                ge[x].fitness -= 0.01
+            if outputs[1] > 0.75:
+                ship.rotate_right()
+                ge[x].fitness -= 0.01
+            if outputs[2] > 0.5:
+                ship.thrust()
+            if outputs[3] > 0.5:
+                game.shoot()
+
+            if game.hit_asteroid:
+                ge[x].fitness += 10
+            if game.bullet_missed:
+                ge[x].fitness -= 1
+            if ship.speed == 0:
+                ge[x].fitness -= 0.01
+            ge[x].fitness += 0.01
+            for a in game.asteroids:
+                if game.is_colliding(ship.x, ship.y, a.x, a.y, a.size):
+                    ge[x].fitness -= 10
+                    if ge[x].fitness > best_fitness:
+                        best_fitness = ge[x].fitness
+                        best_genome = ge[x]
+                    games.pop(x)
+                    nets.pop(x)
+                    ge.pop(x)
+                    break
+
+def load_pickles(config_path):
+    file_paths = []
+    for root, directories, files in os.walk("pickles"):
+        for filename in files:
+            filepath = os.path.join(root, filename)
+            file_paths.append(filepath)
+    for path in file_paths:
+        replay_genome(config_path, path)
+
+def replay_genome(config_path, pickle_path):
+    config = neat.config.Config(neat.DefaultGenome, neat.DefaultReproduction, neat.DefaultSpeciesSet, neat.DefaultStagnation, config_path)
+    with open(pickle_path, "rb") as f:
+        genome = pickle.load(f)
+    genomes = [(1,genome)]
+    replay_main(genomes, config)
+
+                 
 def run(config_path):
     config = neat.config.Config(neat.DefaultGenome, neat.DefaultReproduction, neat.DefaultSpeciesSet, neat.DefaultStagnation, config_path)
     p = neat.Population(config)
     p.add_reporter(neat.StdOutReporter(True))
     stats = neat.StatisticsReporter()
     p.add_reporter(stats)
-    winner = p.run(main,500)
+    winner = p.run(neat_main,500)
 
 if __name__ == "__main__":
+    flag = True
+    while flag:
+        print("Would you like to...")
+        print("Run NEAT (1)")
+        print("Replay the best of each last recorded generation? (2)")
+        x = int(input())
+        if x == 1 or x == 2:
+            flag = False
+    input
     local_dir = os.path.dirname(__file__)
     config_path = os.path.join(local_dir, "config-feedforward.txt")
-    run(config_path)
+    if x == 1:
+        run(config_path)
+    elif x == 2:
+        load_pickles(config_path)
