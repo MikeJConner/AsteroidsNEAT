@@ -14,18 +14,18 @@ reset_on_extinction   = False
 #the function we want to use to create new nodes. tanh is a pretty ok one
 activation_default      = sigmoid
 #the probability that a mutation will replace our activation function with a randomly determined one from the activation_options below
-activation_mutate_rate  = 0.2
+activation_mutate_rate  = 0.3
 activation_options      = sigmoid clamped relu tanh
 # node aggregation options
 aggregation_default     = sum
-aggregation_mutate_rate = 0.2
+aggregation_mutate_rate = 0.3
 aggregation_options     = sum product
 
 # node bias options
 bias_init_mean          = 0.0
 bias_init_stdev         = 1.0
-bias_max_value          = 10.0
-bias_min_value          = -10.0
+bias_max_value          = 200.0
+bias_min_value          = -200.0
 bias_mutate_power       = 0.3
 bias_mutate_rate        = 0.6
 bias_replace_rate       = 0.2
@@ -40,7 +40,7 @@ conn_delete_prob        = 0.5
 
 # connection enable options
 enabled_default         = True
-enabled_mutate_rate     = 0.05
+enabled_mutate_rate     = 0.2
 
 feed_forward            = True
 initial_connection      = full_nodirect
@@ -58,18 +58,18 @@ num_outputs             = 4
 
 # node response options
 response_init_mean      = 1.0
-response_init_stdev     = 0.0
-response_max_value      = 30.0
-response_min_value      = -30.0
+response_init_stdev     = 0.2
+response_max_value      = 100.0
+response_min_value      = -100.0
 response_mutate_power   = 0.2
 response_mutate_rate    = 0.2
 response_replace_rate   = 0.2
 
 # connection weight options
-weight_init_mean        = 0.0
+weight_init_mean        = 0.2
 weight_init_stdev       = 1.0
-weight_max_value        = 30
-weight_min_value        = -30
+weight_max_value        = 1
+weight_min_value        = -1
 weight_mutate_power     = 0.5
 weight_mutate_rate      = 0.8
 weight_replace_rate     = 0.1

@@ -173,12 +173,12 @@ class Asteroid:
         self.lines = []
 
         # Make random asteroid sprites
-        full_circle = random.uniform(50,72)
+        full_circle = random.uniform(45,55)
         self.vertices = []
         while full_circle < 360:
             self.vertices.append([self.size, full_circle])
             dist = self.size * 0.9
-            full_circle += random.uniform(45, 65)
+            full_circle += random.uniform(45, 55)
 
         for v in range(len(self.vertices)):
             if v == len(self.vertices) - 1:
@@ -391,24 +391,23 @@ def neat_main(genomes, config):
                 a = game.asteroids
                 sc = game.score
                 draw_window(win, s, b, a, sc, gen)
-                #for x, distance in enumerate(game.distances):
-                   # print(x, ": ", distance)
 
             outputs = nets[x].activate((game.distances[0], game.distances[1], game.distances[2], game.distances[3], game.distances[4], game.distances[5], game.distances[6], game.distances[7]))
-            if outputs[0] > 0.75:
+            if outputs[0] > 0.8:
                 ship.rotate_left()
-            if outputs[1] > 0.75:
+            if outputs[1] > 0.8:
                 ship.rotate_right()
-            if outputs[2] > 0.75:
+            if outputs[2] > 0.8:
+                ge[x].fitness -= .009
                 ship.thrust()
             if outputs[3] > 0.75:
                 game.shoot()
 
             if game.hit_asteroid:
-                ge[x].fitness += 1
+                ge[x].fitness += 2
             if game.bullet_missed:
                 ge[x].fitness -= 1
-            ge[x].fitness += 0.05
+            ge[x].fitness += 0.01
             for a in game.asteroids:
                 if game.is_colliding(ship.x, ship.y, a.x, a.y, a.size):
                     ge[x].fitness -= 5
@@ -465,23 +464,23 @@ def replay_main(genomes, config):
                 sc = game.score
                 draw_window(win, s, b, a, sc, gen)
             outputs = nets[x].activate((game.distances[0], game.distances[1], game.distances[2], game.distances[3], game.distances[4], game.distances[5], game.distances[6], game.distances[7]))
-            if outputs[0] > 0.5:
+            if outputs[0] > 0.8:
                 ship.rotate_left()
-            if outputs[1] > 0.5:
+            if outputs[1] > 0.8:
                 ship.rotate_right()
-            if outputs[2] > 0.5:
+            if outputs[2] > 0.8:
                 ship.thrust()
-            if outputs[3] > 0.5:
+                ge[x].fitness -= (0.005 + self.ship.speed * 0.001)
+            if outputs[3] > 0.75:
                 game.shoot()
 
             if game.hit_asteroid:
-                ge[x].fitness += 10
+                ge[x].fitness += 2
             if game.bullet_missed:
                 ge[x].fitness -= 1
-            ge[x].fitness += .1
+            ge[x].fitness += .01
             for a in game.asteroids:
                 if game.is_colliding(ship.x, ship.y, a.x, a.y, a.size):
-                    ge[x].fitness -= 5
                     if ge[x].fitness > best_fitness:
                         best_fitness = ge[x].fitness
                         best_genome = ge[x]
