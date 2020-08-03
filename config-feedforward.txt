@@ -24,11 +24,11 @@ aggregation_options     = sum product
 # node bias options
 bias_init_mean          = 0.0
 bias_init_stdev         = 1.0
-bias_max_value          = 30.0
-bias_min_value          = -30.0
-bias_mutate_power       = 0.4
+bias_max_value          = 10.0
+bias_min_value          = -10.0
+bias_mutate_power       = 0.3
 bias_mutate_rate        = 0.6
-bias_replace_rate       = 0.1
+bias_replace_rate       = 0.2
 
 # genome compatibility options
 compatibility_disjoint_coefficient = 1.0

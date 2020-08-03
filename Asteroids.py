@@ -19,7 +19,7 @@ WIN_WIDTH = 800
 WIN_HEIGHT = 800
 STAT_FONT = pygame.font.SysFont("comicsans", 50)
 #set game speed, making this number higher will let generations go faster
-GAME_SPEED = .05
+GAME_SPEED = 1
 #constant to convert degrees to radians
 D_TO_R = math.pi / 180
 #theres a better way to track gens globally
@@ -61,7 +61,7 @@ class Ship:
     def __init__(self):
         self.x = WIN_WIDTH // 2
         self.y = WIN_HEIGHT // 2
-        self.MAX_SPEED = 10
+        self.MAX_SPEED = 7
         self.size = 20
         self.rotation = 0
         self.speed = 0
@@ -329,10 +329,10 @@ class Game:
                 x = self.ship.x + random.randint(-300, 300)
                 temp = self.ship.x - x
             temp = 0
-            while abs(temp < 200):
+            while abs(temp) < 200:
                 y = self.ship.y + random.randint(-300, 300)
                 temp = self.ship.y - y
-            angle = math.atan(get_slope(((self.ship.x, self.ship.y), (x, y)))) * 180 / math.pi
+            angle = math.atan2(self.ship.x - x, y - self.ship.y) * 180 / math.pi + 270
             self.asteroids.append(Asteroid(x,y, -1, angle))
         
 
@@ -391,8 +391,8 @@ def neat_main(genomes, config):
                 a = game.asteroids
                 sc = game.score
                 draw_window(win, s, b, a, sc, gen)
-                for x, distance in enumerate(game.distances):
-                    print(x, ": ", distance)
+                #for x, distance in enumerate(game.distances):
+                   # print(x, ": ", distance)
 
             outputs = nets[x].activate((game.distances[0], game.distances[1], game.distances[2], game.distances[3], game.distances[4], game.distances[5], game.distances[6], game.distances[7]))
             if outputs[0] > 0.75:
@@ -408,7 +408,7 @@ def neat_main(genomes, config):
                 ge[x].fitness += 1
             if game.bullet_missed:
                 ge[x].fitness -= 1
-            ge[x].fitness += 0.1
+            ge[x].fitness += 0.05
             for a in game.asteroids:
                 if game.is_colliding(ship.x, ship.y, a.x, a.y, a.size):
                     ge[x].fitness -= 5
@@ -527,8 +527,6 @@ def player_main():
             if game.is_colliding(game.ship.x, game.ship.y, a.x, a.y, a.size):
                 run = False
                 break
-
-
 
 
 def load_pickles(config_path):
