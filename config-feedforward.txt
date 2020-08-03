@@ -5,18 +5,17 @@ fitness_criterion     = max
 fitness_threshold     = 100000
 no_fitness_termination = True
 #how many birds we will have per generation
-pop_size              = 200
+pop_size              = 500
 #different birds will make different neural connections, groups with different connections are species, if one dies we can say to reset it but in this and most cases we just want it to be false
 reset_on_extinction   = False
 
 [DefaultGenome]
 # node activation options
 #the function we want to use to create new nodes. tanh is a pretty ok one
-activation_default      = tanh
+activation_default      = sigmoid
 #the probability that a mutation will replace our activation function with a randomly determined one from the activation_options below
-activation_mutate_rate  = 0.5
-activation_options      = sigmoid clamped relu softplus
-
+activation_mutate_rate  = 0.2
+activation_options      = sigmoid clamped relu tanh
 # node aggregation options
 aggregation_default     = sum
 aggregation_mutate_rate = 0.2
@@ -27,8 +26,8 @@ bias_init_mean          = 0.0
 bias_init_stdev         = 1.0
 bias_max_value          = 30.0
 bias_min_value          = -30.0
-bias_mutate_power       = 0.5
-bias_mutate_rate        = 0.7
+bias_mutate_power       = 0.4
+bias_mutate_rate        = 0.6
 bias_replace_rate       = 0.1
 
 # genome compatibility options
@@ -41,7 +40,7 @@ conn_delete_prob        = 0.5
 
 # connection enable options
 enabled_default         = True
-enabled_mutate_rate     = 0.01
+enabled_mutate_rate     = 0.05
 
 feed_forward            = True
 initial_connection      = full_nodirect
@@ -51,7 +50,7 @@ node_add_prob           = 0.2
 node_delete_prob        = 0.2
 
 # network parameters
-num_hidden              = 0
+num_hidden              = 1
 #we want this to be how many things we are giving our network, so for this we have the birds y position and how far vertically the bird is from the top and bottom pipes. This can be seen around line 220 in our python file
 num_inputs              = 8
 #this is all the outputs we want. In this case we just want 1 and it will be used to determine if we should jump or not
@@ -62,9 +61,9 @@ response_init_mean      = 1.0
 response_init_stdev     = 0.0
 response_max_value      = 30.0
 response_min_value      = -30.0
-response_mutate_power   = 0.0
-response_mutate_rate    = 0.0
-response_replace_rate   = 0.0
+response_mutate_power   = 0.2
+response_mutate_rate    = 0.2
+response_replace_rate   = 0.2
 
 # connection weight options
 weight_init_mean        = 0.0
@@ -82,12 +81,12 @@ compatibility_threshold = 3.0
 #this is what we want to use to determine the fitness of an entire species, not just one bird. We can keep this the same as the way we want to specify good fitness for the individual birds
 species_fitness_func = max
 #if a species shows no improvement in more than this many generations then they will be removed
-max_stagnation       = 5
-#This says that at least 2 species with the highes fitness will not be removed due to the max_stagnation, that way we wont eliminate all of our species
-species_elitism      = 2
+max_stagnation       = 8
+#This says that at least 4 species with the highes fitness will not be removed due to the max_stagnation, that way we wont eliminate all of our species
+species_elitism      = 4
 
 [DefaultReproduction]
 #the number of birds from each species that will be kept as is from one generation to the next
-elitism            = 10
+elitism            = 15
 #the fraction of each species that are allowed to reproduce after each generation
 survival_threshold = 0.2

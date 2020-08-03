@@ -19,7 +19,7 @@ WIN_WIDTH = 800
 WIN_HEIGHT = 800
 STAT_FONT = pygame.font.SysFont("comicsans", 50)
 #set game speed, making this number higher will let generations go faster
-GAME_SPEED = 1
+GAME_SPEED = .05
 #constant to convert degrees to radians
 D_TO_R = math.pi / 180
 #theres a better way to track gens globally
@@ -127,16 +127,18 @@ class Bullet:
     def __init__(self, x, y, direction):
         self.x = x
         self.y = y
-        self.VEL = 30
+        self.VEL = 80
         self.direction = direction
-        self.on_screen = True
+        self.life_time = 10
+        self.alive = True
 
     def move(self):
+        self.life_time -= 1
         self.x += self.VEL * math.cos(self.direction * D_TO_R)
         self.y += self.VEL * math.sin(self.direction * D_TO_R)
-        if self.x > WIN_WIDTH or self.x < 0 or self.y > WIN_HEIGHT or self.y < 0:
-            self.on_screen = False
-        return not self.on_screen
+        if self.life_time < 0:
+            self.alive = False
+        return not self.alive
 
     def draw(self, win):
         pygame.draw.circle(win, (255,255,255), (int(self.x), int(self.y)), 2)
@@ -144,16 +146,16 @@ class Bullet:
 
 class Asteroid:
     def __init__(self, x = -1, y = -1, size = -1, direction = -1):
-        if size == -1:
-            size = random.randrange(1,3)
-            if size == 2:
-                self.size = 80
-            elif size == 1:
-                self.size = 40
-            elif size == 0:
-                self.size = 20
-        else:
+        if size != -1:
             self.size = size
+        else:
+            self.size = random.randint(0,2)
+            if self.size == 0:
+                self.size = 20
+            elif self.size == 1:
+                self.size = 40
+            elif self.size == 2:
+                self.size = 80
         if x == -1:
             self.x = 0
         else:
@@ -166,7 +168,7 @@ class Asteroid:
             self.direction = random.randrange(0, 360) * D_TO_R
         else:
             self.direction = direction * D_TO_R
-        self.speed = random.randrange(1, 5)
+        self.speed = random.randrange(3, 7)
         self.rotation = 0
         self.lines = []
 
@@ -175,8 +177,8 @@ class Asteroid:
         self.vertices = []
         while full_circle < 360:
             self.vertices.append([self.size, full_circle])
-            dist = self.size * 0.75
-            full_circle += random.uniform(45, 75)
+            dist = self.size * 0.9
+            full_circle += random.uniform(45, 65)
 
         for v in range(len(self.vertices)):
             if v == len(self.vertices) - 1:
@@ -192,14 +194,14 @@ class Asteroid:
         self.x += self.speed / 1.5 * math.cos(self.direction)
         self.y += self.speed / 1.5 * math.sin(self.direction)
         self.rotate()
-        if self.x > WIN_WIDTH + self.size / 2:
-            self.x = -self.size / 2
-        elif self.x < -self.size / 2:
-            self.x = WIN_WIDTH + self.size / 2
-        if self.y > WIN_HEIGHT + self.size / 2:
-            self.y = -self.size / 2
-        elif self.y < -self.size / 2:
-            self.y = WIN_HEIGHT + self.size / 2
+        if self.x > WIN_WIDTH + self.size:
+            self.x = -self.size
+        elif self.x < -self.size:
+            self.x = WIN_WIDTH + self.size
+        if self.y > WIN_HEIGHT + self.size:
+            self.y = -self.size
+        elif self.y < -self.size:
+            self.y = WIN_HEIGHT + self.size
 
     def rotate(self):
         self.rotation += 2
@@ -231,38 +233,48 @@ class Game:
         self.bullets = []
         self.distances = []
         self.sight_lines = []
+        self.stationary_count = 200
         self.score = 0
         self.shoot_cooldown = 0
         self.win = win
         self.hit_asteroid = False
         self.bullet_missed = False
         self.num_bullets_missed = 0
-        for i in range(5):
+        for i in range(4):
             self.asteroids.append(Asteroid())
         self.asteroids.append(Asteroid(WIN_WIDTH / 2, WIN_HEIGHT / 4, 40, 90))
 
     def move(self):
         self.ship.move()
         self.sight_lines = (
-            ((int(self.ship.x), int(self.ship.y)), (int(self.ship.x + math.cos(self.ship.rotation * D_TO_R) * WIN_WIDTH), int(self.ship.y + math.sin(self.ship.rotation * D_TO_R) * WIN_HEIGHT))),
-            ((int(self.ship.x), int(self.ship.y)), (int(self.ship.x + math.cos((self.ship.rotation + 45) * D_TO_R) * WIN_WIDTH), int(self.ship.y + math.sin((self.ship.rotation + 45) * D_TO_R) * WIN_HEIGHT))),
-            ((int(self.ship.x), int(self.ship.y)), (int(self.ship.x + math.cos((self.ship.rotation - 45) * D_TO_R) * WIN_WIDTH), int(self.ship.y + math.sin((self.ship.rotation - 45) * D_TO_R) * WIN_HEIGHT))),
-            ((int(self.ship.x), int(self.ship.y)), (int(self.ship.x + math.cos((self.ship.rotation + 90) * D_TO_R) * WIN_WIDTH), int(self.ship.y + math.sin((self.ship.rotation + 90) * D_TO_R) * WIN_HEIGHT))),
-            ((int(self.ship.x), int(self.ship.y)), (int(self.ship.x + math.cos((self.ship.rotation - 90) * D_TO_R) * WIN_WIDTH), int(self.ship.y + math.sin((self.ship.rotation - 90) * D_TO_R) * WIN_HEIGHT))),
-            ((int(self.ship.x), int(self.ship.y)), (int(self.ship.x + math.cos((self.ship.rotation + 135) * D_TO_R) * WIN_WIDTH), int(self.ship.y + math.sin((self.ship.rotation + 135) * D_TO_R) * WIN_HEIGHT))),
-            ((int(self.ship.x), int(self.ship.y)), (int(self.ship.x + math.cos((self.ship.rotation - 135) * D_TO_R) * WIN_WIDTH), int(self.ship.y + math.sin((self.ship.rotation - 135) * D_TO_R) * WIN_HEIGHT))),
-            ((int(self.ship.x), int(self.ship.y)), (int(self.ship.x + math.cos((self.ship.rotation + 180) * D_TO_R) * WIN_WIDTH), int(self.ship.y + math.sin((self.ship.rotation + 180) * D_TO_R) * WIN_HEIGHT))),
-            ((int(self.ship.x), int(self.ship.y)), (int(self.ship.x + math.cos((self.ship.rotation - 180) * D_TO_R) * WIN_WIDTH), int(self.ship.y + math.sin((self.ship.rotation - 180) * D_TO_R) * WIN_HEIGHT)))
+            ((int(self.ship.x), int(self.ship.y)), (int(self.ship.x + math.cos(self.ship.rotation * D_TO_R) * WIN_WIDTH * 2), int(self.ship.y + math.sin(self.ship.rotation * D_TO_R) * WIN_HEIGHT * 2))),
+            ((int(self.ship.x), int(self.ship.y)), (int(self.ship.x + math.cos((self.ship.rotation + 45) * D_TO_R) * WIN_WIDTH * 2), int(self.ship.y + math.sin((self.ship.rotation + 45) * D_TO_R) * WIN_HEIGHT * 2))),
+            ((int(self.ship.x), int(self.ship.y)), (int(self.ship.x + math.cos((self.ship.rotation - 45) * D_TO_R) * WIN_WIDTH * 2), int(self.ship.y + math.sin((self.ship.rotation - 45) * D_TO_R) * WIN_HEIGHT * 2))),
+            ((int(self.ship.x), int(self.ship.y)), (int(self.ship.x + math.cos((self.ship.rotation + 90) * D_TO_R) * WIN_WIDTH * 2), int(self.ship.y + math.sin((self.ship.rotation + 90) * D_TO_R) * WIN_HEIGHT * 2))),
+            ((int(self.ship.x), int(self.ship.y)), (int(self.ship.x + math.cos((self.ship.rotation - 90) * D_TO_R) * WIN_WIDTH * 2), int(self.ship.y + math.sin((self.ship.rotation - 90) * D_TO_R) * WIN_HEIGHT * 2))),
+            ((int(self.ship.x), int(self.ship.y)), (int(self.ship.x + math.cos((self.ship.rotation + 135) * D_TO_R) * WIN_WIDTH * 2), int(self.ship.y + math.sin((self.ship.rotation + 135) * D_TO_R) * WIN_HEIGHT * 2))),
+            ((int(self.ship.x), int(self.ship.y)), (int(self.ship.x + math.cos((self.ship.rotation - 135) * D_TO_R) * WIN_WIDTH * 2), int(self.ship.y + math.sin((self.ship.rotation - 135) * D_TO_R) * WIN_HEIGHT * 2))),
+            ((int(self.ship.x), int(self.ship.y)), (int(self.ship.x + math.cos((self.ship.rotation + 180) * D_TO_R) * WIN_WIDTH * 2), int(self.ship.y + math.sin((self.ship.rotation + 180) * D_TO_R) * WIN_HEIGHT * 2))),
+            ((int(self.ship.x), int(self.ship.y)), (int(self.ship.x + math.cos((self.ship.rotation - 180) * D_TO_R) * WIN_WIDTH * 2), int(self.ship.y + math.sin((self.ship.rotation - 180) * D_TO_R) * WIN_HEIGHT * 2)))
         )
         self.distances = self.get_sight()
         self.shoot_cooldown -= 1
         self.hit_asteroid = self.check_collisions(self.win)
         self.bullet_missed = False
         if len(self.asteroids) < 5:
-            if self.ship.x < 60 or WIN_WIDTH - self.ship.x  < 60:
-                self.asteroids.append(Asteroid(None, random.randint(int(self.ship.y) - 60, int(self.ship.y) + 60)))
+            flag = random.randint(0,1)
+            if flag == 0:
+                self.attack_player()
             else:
                 self.asteroids.append(Asteroid())
+        if self.ship.speed != 0:
+            self.stationary_count -= 1
+        else:
+            self.stationary_count -= 2
+        if self.stationary_count < 1:
+            self.stationary_count = 200
+            if len(self.asteroids) < 12:
+                self.attack_player()
         for asteroid in self.asteroids:
             asteroid.move()
         for bullet in self.bullets:
@@ -274,7 +286,7 @@ class Game:
     def shoot(self):
         if self.shoot_cooldown <= 0:
             self.bullets.append(self.ship.shoot())
-            self.shoot_cooldown = 30
+            self.shoot_cooldown = 40
 
     def is_colliding(self, x, y, xTo, yTo, size):
         if x > xTo - size and x < xTo + size and y > yTo - size and y < yTo + size:
@@ -287,7 +299,7 @@ class Game:
                 if self.is_colliding(b.x, b.y, a.x, a.y, a.size):
                     if a.size != 20:
                         self.asteroids.append(Asteroid(a.x, a.y, a.size / 2, a.direction - random.randrange(5, 20)))
-                        self.asteroids.append(Asteroid(a.x, a.y, a.size / 2, a.direction + random.randrange(5, 200)))
+                        self.asteroids.append(Asteroid(a.x, a.y, a.size / 2, a.direction + random.randrange(5, 20)))
                     self.asteroids.remove(a)
                     self.bullets.remove(b)
                     self.score += 1
@@ -296,24 +308,33 @@ class Game:
 
     def get_sight(self):
         s_lines = self.sight_lines
-        a_lines = []
         distances = []
-        for a in self.asteroids:
-            for line in a.lines:
-                a_lines.append(line)
-        for a in a_lines:
+        for sl in self.sight_lines:
             closest = 10000
-            for s in s_lines:
-                coord = find_intersection(s, a)
-                if coord:
-                    dis = get_dis(self.ship.x, coord[0], self.ship.y, coord[1])
-                    if dis < closest:
-                        closest = dis
-            if closest != 10000:
-                distances.append(closest)
-            else:
-                distances.append(10000)
+            for a in self.asteroids:
+                for al in a.lines:
+                    coord = find_intersection(sl, al)
+                    if coord:
+                        dis = get_dis(self.ship.x, coord[0], self.ship.y, coord[1])
+                        if dis < closest:
+                            closest = dis
+            distances.append(closest)
         return distances            
+
+    def attack_player(self):
+        s = self.ship
+        for i in range(random.randint(2,4)):
+            temp = 0
+            while abs(temp) < 200:
+                x = self.ship.x + random.randint(-300, 300)
+                temp = self.ship.x - x
+            temp = 0
+            while abs(temp < 200):
+                y = self.ship.y + random.randint(-300, 300)
+                temp = self.ship.y - y
+            angle = math.atan(get_slope(((self.ship.x, self.ship.y), (x, y)))) * 180 / math.pi
+            self.asteroids.append(Asteroid(x,y, -1, angle))
+        
 
 
 def draw_window(win, ship, bullets, asteroids, score, gen):
@@ -355,19 +376,6 @@ def neat_main(genomes, config):
                 run = False
                 pygame.quit()
                 quit()
-        #check for user input
-        '''
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
-                    games[0].shoot()
-        pressed = pygame.key.get_pressed()
-        if pressed[pygame.K_w]:
-            games[0].ship.thrust()
-        if pressed[pygame.K_a]:
-            games[0].ship.rotate_left()
-        if pressed[pygame.K_d]:
-            games[0].ship.rotate_right()
-        '''
         
         if len(games) < 1:
             run = False
@@ -383,33 +391,27 @@ def neat_main(genomes, config):
                 a = game.asteroids
                 sc = game.score
                 draw_window(win, s, b, a, sc, gen)
-                #for x, distance in enumerate(game.distances):
-                    #if x == 5:
-                        #print(x, ": ", distance)
+                for x, distance in enumerate(game.distances):
+                    print(x, ": ", distance)
 
-            #outputs = nets[x].activate((game.ship.x, game.ship.y, game.ship.rotation, game.ship.speed, game.distances[0], game.distances[1], game.distances[2], game.distances[3], game.distances[4], game.distances[5], game.distances[6], game.distances[7]))
             outputs = nets[x].activate((game.distances[0], game.distances[1], game.distances[2], game.distances[3], game.distances[4], game.distances[5], game.distances[6], game.distances[7]))
             if outputs[0] > 0.75:
                 ship.rotate_left()
-                ge[x].fitness -= 0.01
             if outputs[1] > 0.75:
                 ship.rotate_right()
-                ge[x].fitness -= 0.01
-            if outputs[2] > 0.5:
+            if outputs[2] > 0.75:
                 ship.thrust()
-            if outputs[3] > 0.5:
+            if outputs[3] > 0.75:
                 game.shoot()
 
             if game.hit_asteroid:
-                ge[x].fitness += 10
+                ge[x].fitness += 1
             if game.bullet_missed:
                 ge[x].fitness -= 1
-            if ship.speed == 0:
-                ge[x].fitness -= 0.01
-           # ge[x].fitness += 0.01
+            ge[x].fitness += 0.1
             for a in game.asteroids:
                 if game.is_colliding(ship.x, ship.y, a.x, a.y, a.size):
-                    ge[x].fitness -= 10
+                    ge[x].fitness -= 5
                     if ge[x].fitness > best_fitness:
                         best_fitness = ge[x].fitness
                         best_genome = ge[x]
@@ -447,20 +449,7 @@ def replay_main(genomes, config):
                 run = False
                 pygame.quit()
                 quit()
-        #check for user input
-        '''
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
-                    games[0].shoot()
-        pressed = pygame.key.get_pressed()
-        if pressed[pygame.K_w]:
-            games[0].ship.thrust()
-        if pressed[pygame.K_a]:
-            games[0].ship.rotate_left()
-        if pressed[pygame.K_d]:
-            games[0].ship.rotate_right()
-        '''
-        
+    
         if len(games) < 1:
             run = False
             break
@@ -475,18 +464,11 @@ def replay_main(genomes, config):
                 a = game.asteroids
                 sc = game.score
                 draw_window(win, s, b, a, sc, gen)
-                #for x, distance in enumerate(game.distances):
-                    #if x == 5:
-                        #print(x, ": ", distance)
-
-            #outputs = nets[x].activate((game.ship.x, game.ship.y, game.ship.rotation, game.ship.speed, game.distances[0], game.distances[1], game.distances[2], game.distances[3], game.distances[4], game.distances[5], game.distances[6], game.distances[7]))
             outputs = nets[x].activate((game.distances[0], game.distances[1], game.distances[2], game.distances[3], game.distances[4], game.distances[5], game.distances[6], game.distances[7]))
-            if outputs[0] > 0.75:
+            if outputs[0] > 0.5:
                 ship.rotate_left()
-                ge[x].fitness -= 0.01
-            if outputs[1] > 0.75:
+            if outputs[1] > 0.5:
                 ship.rotate_right()
-                ge[x].fitness -= 0.01
             if outputs[2] > 0.5:
                 ship.thrust()
             if outputs[3] > 0.5:
@@ -496,19 +478,58 @@ def replay_main(genomes, config):
                 ge[x].fitness += 10
             if game.bullet_missed:
                 ge[x].fitness -= 1
-            if ship.speed == 0:
-                ge[x].fitness -= 0.01
-            ge[x].fitness += 0.01
+            ge[x].fitness += .1
             for a in game.asteroids:
                 if game.is_colliding(ship.x, ship.y, a.x, a.y, a.size):
-                    ge[x].fitness -= 10
+                    ge[x].fitness -= 5
                     if ge[x].fitness > best_fitness:
                         best_fitness = ge[x].fitness
                         best_genome = ge[x]
+                    print(best_fitness)
                     games.pop(x)
                     nets.pop(x)
                     ge.pop(x)
                     break
+
+
+def player_main():
+    win = pygame.display.set_mode((WIN_WIDTH, WIN_HEIGHT))
+    clock = pygame.time.Clock()
+    global gen
+    gen = "Player"
+    game = Game(win)
+
+    run = True
+    while run:
+        clock.tick(30 * GAME_SPEED)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                run = False
+                pygame.quit()
+                quit()
+        #check for user input
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    game.shoot()
+
+        pressed = pygame.key.get_pressed()
+        if pressed[pygame.K_w]:
+            game.ship.thrust()
+        if pressed[pygame.K_a]:
+            game.ship.rotate_left()
+        if pressed[pygame.K_d]:
+            game.ship.rotate_right()
+
+        game.move()
+        draw_window(win, game.ship, game.bullets, game.asteroids, game.score, gen)
+
+        for a in game.asteroids:
+            if game.is_colliding(game.ship.x, game.ship.y, a.x, a.y, a.size):
+                run = False
+                break
+
+
+
 
 def load_pickles(config_path):
     file_paths = []
@@ -541,9 +562,12 @@ if __name__ == "__main__":
         print("Would you like to...")
         print("Run NEAT (1)")
         print("Replay the best of each last recorded generation? (2)")
+        print("Play the game yourself? (3)")
         x = int(input())
-        if x == 1 or x == 2:
+        if x == 1 or x == 2 or x == 3:
             flag = False
+    if x == 3:
+        player_main()
     input
     local_dir = os.path.dirname(__file__)
     config_path = os.path.join(local_dir, "config-feedforward.txt")
