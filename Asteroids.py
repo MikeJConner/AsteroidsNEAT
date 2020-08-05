@@ -25,7 +25,7 @@ D_TO_R = math.pi / 180
 #theres a better way to track gens globally
 gen = 0
 
-
+#get the slope of a line
 def get_slope(line):
     xdif = line[1][1] - line[0][1]
     ydif = line[1][0] - line[0][0]
@@ -33,28 +33,40 @@ def get_slope(line):
         return 9999
     return xdif / ydif
 
-def get_y_int(line, slope):
-    return line[0][1] - slope * line[0][0]
+#get the y intercept of a line given the line
+def get_y_int(line):
+    return line[0][1] - get_slope(line) * line[0][0]
 
+#check if a number is between two other numbers regardless of sign
+def is_between_points(middle, end1, end2):
+    if middle < end1 and middle > end2 or middle > end1 and middle < end2:
+        return True
+
+#decide if a point is on a line
+def is_on_line(point, line):
+    if is_between_points(point[0], line[1][0], line[0][0]):
+        if is_between_points(point[1], line[1][1], line[0][1]):
+            return True
+    return False
+
+#given two lines use y=mx+b to find if they intersect
 def find_intersection(line1, line2):
     m1 = get_slope(line1)
     m2 = get_slope(line2)
-    b1 = get_y_int(line1, m1)
-    b2 = get_y_int(line2, m2)
+    b1 = get_y_int(line1)
+    b2 = get_y_int(line2)
     if m1 == m2:
         return False
     x = (b2 - b1) / (m1-m2)
     y = m1* x + b1
-    if x < line1[1][0] and x > line1[0][0] or x > line1[1][0] and x < line1[0][0]:
-        if y < line1[1][1] and y > line1[0][1] or y > line1[1][1] and y < line1[0][1]:
-            if x < line2[1][0] and x > line2[0][0] or x > line2[1][0] and x < line2[0][0]:
-                if y < line2[1][1] and y > line2[0][1] or y > line2[1][1] and y < line2[0][1]:
-                    return x, y
+    if is_on_line((x, y), line1) and is_on_line((x, y), line2):
+        return x, y
     return False
 
-def get_dis(x1, x2, y1, y2):
-        xdif = (x1 - x2)**2
-        ydif = (y1 - y2)**2
+#get the distance between two points
+def get_distance(point1, point2):
+        xdif = (point1[0] - point2[0])**2
+        ydif = (point1[1] - point2[1])**2
         return int(math.sqrt(xdif + ydif))
 
 class Ship:
@@ -64,6 +76,7 @@ class Ship:
         self.MAX_SPEED = 7
         self.size = 20
         self.rotation = 0
+        self.rad_rotation = 0
         self.speed = 0
         self.horizontal_speed = 0
         self.vertical_speed = 0
@@ -72,27 +85,23 @@ class Ship:
     def thrust(self):
         self.horizontal_speed += math.cos(self.rotation * D_TO_R) / 2
         self.vertical_speed += math.sin(self.rotation * D_TO_R) / 2
+        self.stay_under_max_speed()
+        self.speed = math.sqrt(self.horizontal_speed**2 + self.vertical_speed**2)
+        self.is_thrust = True
+
+    def stay_under_max_speed(self):
         if self.horizontal_speed > self.MAX_SPEED:
             self.horizontal_speed = self.MAX_SPEED
         if self.vertical_speed > self.MAX_SPEED:
             self.vertical_speed = self.MAX_SPEED
-        self.speed = math.sqrt(self.horizontal_speed**2 + self.vertical_speed**2)
-        self.is_thrust = True
-
-    def rotate_left(self):
-        self.rotation -= 8
-        
-    def rotate_right(self):
-        self.rotation += 8
-
-    def move(self):
+    
+    def glide(self):
         if not self.is_thrust and self.horizontal_speed != 0:
             self.horizontal_speed -= self.horizontal_speed * 0.02
         if not self.is_thrust and self.vertical_speed != 0:
             self.vertical_speed -= self.vertical_speed * 0.02
-        self.x += self.horizontal_speed
-        self.y += self.vertical_speed
-        #check if we need to wrap around the screen
+
+    def stay_on_screen(self):
         if self.x > WIN_WIDTH:
             self.x = 0
         elif self.x < 0:
@@ -102,24 +111,41 @@ class Ship:
         elif self.y < 0:
             self.y = WIN_HEIGHT
 
+    def rotate_left(self):
+        self.rotation -= 8
+        self.rad_rotation = math.radians(self.rotation)
+        
+    def rotate_right(self):
+        self.rotation += 8
+        self.rad_rotation = math.radians(self.rotation)
+
+    def move(self):
+        self.glide()
+        self.x += self.horizontal_speed
+        self.y += self.vertical_speed
+        self.stay_on_screen()
+
     def shoot(self):
         return Bullet(self.x, self.y, self.rotation)
 
+    def get_ship_coordinates(self):
+        const0 = (self.size * math.sqrt(130) / 12)
+        const1 = math.atan(7 / 9)
+        coord1 = (int(self.x - const0 * math.cos(const1 + self.rad_rotation)), int(self.y - const0 * math.sin(const1 + self.rad_rotation)))
+        coord2 = (int(self.x - const0 * math.cos(const1 - self.rad_rotation)), int(self.y + const0 * math.sin(const1 - self.rad_rotation)))
+        coord3 = (int(self.x + self.size * math.cos(self.rad_rotation)), int(self.y + self.size * math.sin(self.rad_rotation)))
+        return coord1, coord2, coord3
+
     def draw(self, win):
-        v0 = (self.size * math.sqrt(130) / 12)
-        v1 = math.atan(7 / 9)
-        v2 = math.radians(self.rotation)
-        coord1 = (int(self.x - v0 * math.cos(v1 + v2)), int(self.y - v0 * math.sin(v1 +v2)))
-        coord2 = (int(self.x - v0 * math.cos(v1 - v2)), int(self.y + v0 * math.sin(v1 - v2)))
-        coord3 = (int(self.x + self.size * math.cos(v2)), int(self.y + self.size * math.sin(v2)))
+        coord1, coord2, coord3 = self.get_ship_coordinates()
         pygame.draw.lines(win, (255,255,255), True, (coord1,coord2, coord3))
         if self.is_thrust:
             self.is_thrust = False
-            coord1 = (int(self.x - (self.size+10) * math.cos(v2)), int(self.y - (self.size+10) * math.sin(v2)))
-            coord2 = (int(self.x - ((self.size+10) * 0.5 * math.cos(v2 + math.pi / 6))), int(self.y - ((self.size+10) * 0.5 * math.sin(v2 + math.pi / 6))))
+            coord1 = (int(self.x - (self.size+10) * math.cos(self.rad_rotation)), int(self.y - (self.size+10) * math.sin(self.rad_rotation)))
+            coord2 = (int(self.x - ((self.size+10) * 0.5 * math.cos(self.rad_rotation + math.pi / 6))), int(self.y - ((self.size+10) * 0.5 * math.sin(self.rad_rotation + math.pi / 6))))
             pygame.draw.line(win, (255,255,255), coord1, coord2)
-            coord1 = (int(self.x - (self.size+10) * math.cos(-v2)), int(self.y + (self.size+10) * math.sin(-v2)))
-            coord2 = (int(self.x - ((self.size+10) * 0.5 * math.cos(-v2 + math.pi / 6))), int(self.y + ((self.size+10) * 0.5 * math.sin(-v2 + math.pi / 6))))
+            coord1 = (int(self.x - (self.size+10) * math.cos(-self.rad_rotation)), int(self.y + (self.size+10) * math.sin(-self.rad_rotation)))
+            coord2 = (int(self.x - ((self.size+10) * 0.5 * math.cos(-self.rad_rotation + math.pi / 6))), int(self.y + ((self.size+10) * 0.5 * math.sin(-self.rad_rotation + math.pi / 6))))
             pygame.draw.line(win, (255,255,255), coord1, coord2)
 
 
@@ -315,7 +341,7 @@ class Game:
                 for al in a.lines:
                     coord = find_intersection(sl, al)
                     if coord:
-                        dis = get_dis(self.ship.x, coord[0], self.ship.y, coord[1])
+                        dis = get_distance((self.ship.x, self.ship.y), coord)
                         if dis < closest:
                             closest = dis
             distances.append(closest)
@@ -470,7 +496,7 @@ def replay_main(genomes, config):
                 ship.rotate_right()
             if outputs[2] > 0.8:
                 ship.thrust()
-                ge[x].fitness -= (0.005 + self.ship.speed * 0.001)
+                ge[x].fitness -= (0.005 + game.ship.speed * 0.001)
             if outputs[3] > 0.75:
                 game.shoot()
 

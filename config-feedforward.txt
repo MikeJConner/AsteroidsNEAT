@@ -5,7 +5,7 @@ fitness_criterion     = max
 fitness_threshold     = 100000
 no_fitness_termination = True
 #how many birds we will have per generation
-pop_size              = 500
+pop_size              = 400
 #different birds will make different neural connections, groups with different connections are species, if one dies we can say to reset it but in this and most cases we just want it to be false
 reset_on_extinction   = False
 
@@ -24,8 +24,8 @@ aggregation_options     = sum product
 # node bias options
 bias_init_mean          = 0.0
 bias_init_stdev         = 1.0
-bias_max_value          = 200.0
-bias_min_value          = -200.0
+bias_max_value          = 10.0
+bias_min_value          = -10.0
 bias_mutate_power       = 0.3
 bias_mutate_rate        = 0.6
 bias_replace_rate       = 0.2
@@ -59,8 +59,8 @@ num_outputs             = 4
 # node response options
 response_init_mean      = 1.0
 response_init_stdev     = 0.2
-response_max_value      = 100.0
-response_min_value      = -100.0
+response_max_value      = 10.0
+response_min_value      = -10.0
 response_mutate_power   = 0.2
 response_mutate_rate    = 0.2
 response_replace_rate   = 0.2
@@ -68,8 +68,8 @@ response_replace_rate   = 0.2
 # connection weight options
 weight_init_mean        = 0.2
 weight_init_stdev       = 1.0
-weight_max_value        = 1
-weight_min_value        = -1
+weight_max_value        = 10
+weight_min_value        = -10
 weight_mutate_power     = 0.5
 weight_mutate_rate      = 0.8
 weight_replace_rate     = 0.1
@@ -81,12 +81,12 @@ compatibility_threshold = 3.0
 #this is what we want to use to determine the fitness of an entire species, not just one bird. We can keep this the same as the way we want to specify good fitness for the individual birds
 species_fitness_func = max
 #if a species shows no improvement in more than this many generations then they will be removed
-max_stagnation       = 8
-#This says that at least 4 species with the highes fitness will not be removed due to the max_stagnation, that way we wont eliminate all of our species
-species_elitism      = 4
+max_stagnation       = 5
+#This says that at least 2 species with the highes fitness will not be removed due to the max_stagnation, that way we wont eliminate all of our species
+species_elitism      = 2
 
 [DefaultReproduction]
 #the number of birds from each species that will be kept as is from one generation to the next
-elitism            = 15
+elitism            = 25
 #the fraction of each species that are allowed to reproduce after each generation
 survival_threshold = 0.2
